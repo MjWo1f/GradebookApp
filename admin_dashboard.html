@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    input { margin-bottom: 10px; padding: 5px; width: 250px; }
+    button { padding: 5px 10px; margin-bottom: 20px; }
+    table { border-collapse: collapse; width: 80%; margin-top: 20px; }
+    th, td { border: 1px solid black; padding: 5px; text-align: left; }
+  </style>
+</head>
+
+<body>
+  <h1>Admin Dashboard</h1>
+  <p id="welcome"></p>
+
+  <h2>Add New Teacher</h2>
+  <input type="text" id="teacherName" placeholder="Teacher Name"><br>
+  <input type="email" id="teacherEmail" placeholder="Teacher Email"><br>
+  <input type="password" id="teacherPassword" placeholder="Password"><br>
+  <button id="btnAddTeacher">Add Teacher</button>
+
+  <h2>All Teachers</h2>
+  <div id="teachersList"></div>
+
+  <button id="btnLogout">Logout</button>
+
+  <script>
+  /* =====================================================
+     1. NODE / ELECTRON IMPORTS
+  ===================================================== */
+  const fs = require('fs');
+  const path = require('path');
+  const db = require('./database');
+  const bcrypt = require('bcrypt');
+
+  /* =====================================================
+     2. GLOBAL SESSION STATE
+  ===================================================== */
+  let currentUser = null;
+
+  /* =====================================================
+     3. LOAD ADMIN SESSION (RUNS IMMEDIATELY)
+  ===================================================== */
+  try {
+    const sessionPath = path.join(__dirname, 'currentUser.json');
+    const raw = fs.readFileSync(sessionPath, 'utf-8');
+    currentUser = JSON.parse(raw);
+
+    if (!currentUser || currentUser.role !== 'admin') {
+      throw new Error("Invalid admin session");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Session expired or unauthorized. Please log in again.");
+    location.replace("index.html");
+  }
+
+  /* =====================================================
+     4. DOM READY
+  ===================================================== */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('welcome').innerText =
+      `Welcome, ${currentUser.name}`;
+
+    document.getElementById('btnAddTeacher')
+      .addEventListener('click', addTeacher);
+
+    document.getElementById('btnLogout')
+      .addEventListener('click', logout);
+
+    loadTeachers();
+  });
+
+  /* =====================================================
+     5. SAFETY GUARD
+  ===================================================== */
+  function requireUser() {
+    if (!currentUser) {
+      alert("User session not loaded");
+      return false;
+    }
+    return true;
+  }
+
+  /* =====================================================
+     6. FUNCTIONS
+  ===================================================== */
+
+  function addTeacher() {
+    if (!requireUser()) return;
+
+    const name = document.getElementById('teacherName').value.trim();
+    const email = document.getElementById('teacherEmail').value.trim();
+    const password = document.getElementById('teacherPassword').value.trim();
+
+    if (!name || !email || !password) {
+      alert("Please fill out all fields.");
+      return;
+    }
+
+    bcrypt.hash(password, 10, (err, hashedPassword) => {
+      if (err) return alert(err.message);
+
+      db.run(
+        "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'teacher')",
+        [name, email, hashedPassword],
+        function (err) {
+          if (err) {
+            if (err.message.includes("UNIQUE")) {
+              alert("A teacher with this email already exists.");
+            } else {
+              alert(err.message);
+            }
+            return;
+          }
+
+          alert(`Teacher ${name} has been added.`);
+          document.getElementById('teacherName').value = "";
+          document.getElementById('teacherEmail').value = "";
+          document.getElementById('teacherPassword').value = "";
+          loadTeachers();
+        }
+      );
+    });
+  }
+
+  function loadTeachers() {
+    if (!requireUser()) return;
+
+    db.all(
+      "SELECT id, name, email FROM users WHERE role='teacher'",
+      [],
+      (err, rows) => {
+        if (err) return alert(err.message);
+
+        let html =
+          "<table><tr><th>ID</th><th>Name</th><th>Email</th></tr>";
+
+        rows.forEach(t => {
+          html += `
+            <tr>
+              <td>${t.id}</td>
+              <td>${t.name}</td>
+              <td>${t.email}</td>
+            </tr>
+          `;
+        });
+
+        html += "</table>";
+        document.getElementById('teachersList').innerHTML = html;
+      }
+    );
+  }
+
+  function logout() {
+    const sessionPath = path.join(__dirname, 'currentUser.json');
+    if (fs.existsSync(sessionPath)) fs.unlinkSync(sessionPath);
+    location.replace("index.html");
+  }
+  </script>
+</body>
+</html>

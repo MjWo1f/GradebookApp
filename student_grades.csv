@@ -1,0 +1,4 @@
+name,email,class,assignment,earned_points,total_points,due_date,type
+John Doe,john@example.com,Math 101,Homework 1,85,100,2026-01-25,Homework
+Jane Smith,jane@example.com,Math 101,Homework 1,92,100,2026-01-25,Homework
+John Doe,john@example.com,Science 101,Lab 1,75,100,2026-01-26,Lab

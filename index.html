@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Gradebook System - Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 50px; }
+    input { padding: 8px; margin-bottom: 10px; width: 250px; }
+    button { padding: 8px 16px; }
+  </style>
+</head>
+<body>
+  <h1>Login to Gradebook System</h1>
+
+  <input type="email" id="email" placeholder="Email"><br>
+  <input type="password" id="password" placeholder="Password"><br>
+  <button id="loginBtn">Login</button>
+
+  <script>
+    // Node modules
+    const { login } = require('./login');
+    const { ipcRenderer } = require('electron');
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        alert("Please enter both email and password");
+        return;
+      }
+
+      // Call login function
+      login(email, password, (err, user) => {
+        if (err) {
+          alert("Error: " + err);
+        } else if (!user) {
+          alert("Invalid email or password");
+        } else {
+          // Tell main.js which dashboard to load
+          switch (user.role) {
+            case "admin":
+              ipcRenderer.send('open-dashboard', 'admin_dashboard.html');
+              break;
+            case "teacher":
+              ipcRenderer.send('open-dashboard', 'teacher_dashboard.html');
+              break;
+            case "student":
+              ipcRenderer.send('open-dashboard', 'student_dashboard.html');
+              break;
+            default:
+              alert("Unknown role: " + user.role);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
